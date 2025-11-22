@@ -485,94 +485,135 @@
             }
         }
 
-        // 语音朗读 (浏览器原生 API - 修复手机发音问题)
-        let availableVoices = [];
+        // 检测浏览器是否真正支持语音合成
+        function checkBrowserVoiceSupport() {
+            const support = {
+                hasSpeechSynthesis: false,
+                isSupported: false,
+                hasVoices: false,
+                hasChineseVoice: false,
+                problems: []
+            };
 
-        // 检测并处理移动设备语音问题
-        function checkMobileVoiceSupport() {
-            const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-            if (!isMobile) return true;
+            // 检查基础支持
+            support.hasSpeechSynthesis = 'speechSynthesis' in window;
 
-            const chineseVoices = availableVoices.filter(voice =>
+            if (!support.hasSpeechSynthesis) {
+                support.problems.push("浏览器不支持SpeechSynthesis API");
+                return support;
+            }
+
+            // 检查是否有语音列表
+            const voices = speechSynthesis.getVoices();
+            support.hasVoices = voices.length > 0;
+
+            if (!support.hasVoices) {
+                support.problems.push("没有可用的语音列表");
+            }
+
+            // 检查中文支持
+            const chineseVoices = voices.filter(voice =>
                 voice.lang && (voice.lang.includes('zh') || voice.lang.includes('cmn') || voice.lang.includes('Chinese'))
             );
+            support.hasChineseVoice = chineseVoices.length > 0;
 
-            if (chineseVoices.length === 0) {
-                console.error("❌ 移动设备缺少中文TTS语音包！");
-
-                // 向用户展示解决方案
-                const mobileFixDiv = document.createElement('div');
-                mobileFixDiv.id = 'mobileVoiceFix';
-                mobileFixDiv.style.cssText = `
-                    background: #fff3cd;
-                    border: 2px solid #ffc107;
-                    border-radius: 10px;
-                    padding: 15px;
-                    margin: 15px 0;
-                    text-align: left;
-                    color: #856404;
-                    font-size: 0.9rem;
-                `;
-                mobileFixDiv.innerHTML = `
-                    <div style="font-weight: bold; margin-bottom: 8px;">📱 检测到语音问题</div>
-                    <div>您的手机可能未安装中文语音包，导致只能发出音节声（嘟/滴等）。</div>
-                    <div style="margin-top: 8px; font-weight: bold;">解决方案：</div>
-                    <ul style="margin: 5px 0; padding-left: 20px;">
-                        <li>Android：下载Google文字转语音 + 中文语音包</li>
-                        <li>iOS：检查"设置 > 辅助功能 > 朗读内容"是否开启</li>
-                        <li>使用Chrome浏览器（兼容性最好）</li>
-                        <li>确保系统语言包含中文</li>
-                    </ul>
-                    <div style="margin-top: 8px; font-size: 0.8rem; color: #666;">
-                        当前可用语音：${availableVoices.length ? availableVoices.map(v => v.name).join(', ') : '无'}
-                    </div>
-                `;
-
-                document.querySelector('.container').appendChild(mobileFixDiv);
-                return false;
+            if (!support.hasChineseVoice) {
+                support.problems.push("找不到中文语音包");
             }
-            return true;
+
+            support.isSupported = support.hasSpeechSynthesis && support.hasVoices;
+            return support;
         }
 
-        // 预加载并缓存语音列表
+        // 语音朗读 (浏览器原生 API - 针对华为等国产浏览器优化)
+        let availableVoices = [];
+        let voiceSupportChecked = false;
+        let voiceSupportInfo = null;
+
+        // 预加载语音列表
         if ('speechSynthesis' in window) {
             speechSynthesis.onvoiceschanged = function() {
                 availableVoices = speechSynthesis.getVoices();
-                console.log("Available voices:", availableVoices.length);
-
-                // 查找中文语音
-                const chineseVoices = availableVoices.filter(voice =>
-                    voice.lang && (voice.lang.includes('zh') || voice.lang.includes('cmn') || voice.lang.includes('Chinese'))
-                );
-
-                if (chineseVoices.length === 0) {
-                    console.warn("警告：未找到中文语音包！手机可能不支持中文朗读");
-                    console.warn("可用语音:", availableVoices.map(v => `${v.name} (${v.lang})`).join(', '));
-                } else {
-                    console.log("找到中文语音:", chineseVoices.map(v => `${v.name} (${v.lang})`).join(', '));
-                }
+                console.log("语音列表已加载，共", availableVoices.length, "个语音");
+                console.log("可用语音详情:", availableVoices.map(v => `${v.name} (${v.lang})`).join(', '));
             };
 
             // 立即触发一次加载
             availableVoices = speechSynthesis.getVoices();
         }
 
+        // 显示浏览器不支持提示
+        function showBrowserUnsupported() {
+            const fixDiv = document.createElement('div');
+            fixDiv.id = 'browserUnsupportedFix';
+            fixDiv.style.cssText = `
+                background: #f8d7da;
+                border: 2px solid #dc3545;
+                border-radius: 10px;
+                padding: 15px;
+                margin: 15px 0;
+                text-align: left;
+                color: #721c24;
+                font-size: 0.9rem;
+            `;
+
+            const browserInfo = navigator.userAgent;
+            let browserName = "您的浏览器";
+            if (browserInfo.includes('HuaweiBrowser')) browserName = "华为浏览器";
+            else if (browserInfo.includes('MiuiBrowser')) browserName = "小米浏览器";
+            else if (browserInfo.includes('QQBrowser')) browserName = "QQ浏览器";
+            else if (browserInfo.includes('UCBrowser')) browserName = "UC浏览器";
+            else if (browserInfo.includes('Chrome')) browserName = "Chrome浏览器";
+            else if (browserInfo.includes('Safari')) browserName = "Safari浏览器";
+
+            fixDiv.innerHTML = `
+                <div style="font-weight: bold; margin-bottom: 8px;">❌ ${browserName}不支持语音朗读</div>
+                <div>该浏览器未实现对Web Speech API的支持。</div>
+                <div style="margin-top: 8px; font-weight: bold;">请尝试以下方法：</div>
+                <ul style="margin: 5px 0; padding-left: 20px;">
+                    <li><strong>方法1：使用Chrome浏览器</strong>（推荐）</li>
+                    <li><strong>方法2：使用Edge浏览器</strong></li>
+                    <li><strong>方法3：使用Safari浏览器</strong>（iPhone）</li>
+                    <li><strong>方法4：使用Firefox浏览器</strong></li>
+                </ul>
+                <div style="margin-top: 8px; font-size: 0.85rem; color: #666;">
+                    提示：国产浏览器（华为、小米、QQ、UC）通常语音支持较差，建议使用国际主流浏览器。
+                </div>
+            `;
+
+            document.querySelector('.container').appendChild(fixDiv);
+        }
+
         function speak() {
             const char = document.getElementById('charInput').value;
             const statusMsg = document.getElementById('statusMsg');
 
-            // 检查是否支持语音合成
-            if (!('speechSynthesis' in window)) {
-                statusMsg.innerText = "❌ 您的浏览器不支持语音播放功能";
-                statusMsg.style.color = "red";
-                playSound('error');
+            // 检查语音支持（仅检查一次）
+            if (!voiceSupportChecked) {
+                voiceSupportInfo = checkBrowserVoiceSupport();
+                voiceSupportChecked = true;
+
+                if (!voiceSupportInfo.hasSpeechSynthesis) {
+                    console.error("❌ 浏览器完全不支持语音功能");
+                    showBrowserUnsupported();
+                    return;
+                }
+
+                if (!voiceSupportInfo.hasVoices) {
+                    console.warn("⚠️ 有SpeechSynthesis但没有语音列表");
+                }
+            }
+
+            // 如果完全不支持，直接返回
+            if (!voiceSupportInfo.hasSpeechSynthesis) {
+                showBrowserUnsupported();
                 return;
             }
 
             // 停止之前的播放
             speechSynthesis.cancel();
 
-            // 检查是否有可用语音
+            // 更新语音列表
             if (availableVoices.length === 0) {
                 availableVoices = speechSynthesis.getVoices();
             }
@@ -581,26 +622,20 @@
                 voice.lang && (voice.lang.includes('zh') || voice.lang.includes('cmn') || voice.lang.includes('Chinese'))
             );
 
-            // **关键：如果没有中文语音，直接提示用户**
+            // **关键：如果没有中文语音，提示用户**
             if (chineseVoices.length === 0) {
-                console.error("❌ 严重错误：完全找不到中文语音！");
+                console.error("❌ 找不到中文语音包！");
                 console.error("可用语音:", availableVoices.map(v => `${v.name} (${v.lang})`).join(', '));
 
-                // 显示用户友好的错误提示
                 statusMsg.innerHTML = `
-                    <div>❌ 您的设备缺少中文语音包</div>
-                    <div style="font-size: 0.9rem; margin-top: 5px;">
-                        正在读取${availableVoices.length}个可用语音，但没有中文。
+                    <div>❌ 找不到中文语音包</div>
+                    <div style="font-size: 0.85rem; margin-top: 5px; color: #666;">
+                        检测到${availableVoices.length}个语音，但没有中文。
                     </div>
                 `;
                 statusMsg.style.color = "red";
 
-                // 显示解决方案（如果之前没显示过）
-                if (!document.getElementById('mobileVoiceFix')) {
-                    checkMobileVoiceSupport();
-                }
-
-                // 仍然尝试播放，但用户会听到单音节
+                // 仍然尝试播放（可能读成单音节）
                 const utterance = new SpeechSynthesisUtterance(char);
                 utterance.lang = 'zh-CN';
                 utterance.rate = 0.7;
@@ -609,21 +644,16 @@
             }
 
             const utterance = new SpeechSynthesisUtterance(char);
-
-            // **明确指定中文语音**
             utterance.voice = chineseVoices[0];
-            console.log("✅ 使用中文语音:", chineseVoices[0].name, chineseVoices[0].lang);
+            console.log("使用中文语音:", chineseVoices[0].name);
 
-            // 设置语音参数
             utterance.rate = 0.7;
             utterance.pitch = 1.0;
             utterance.volume = 0.8;
 
-            // 事件处理
             utterance.onstart = () => {
                 statusMsg.innerText = "🔊 正在朗读...";
                 statusMsg.style.color = "#4ECDC4";
-                playSound('click');
             };
 
             utterance.onend = () => {
@@ -641,7 +671,6 @@
                 statusMsg.style.color = "red";
             };
 
-            // 尝试播放
             try {
                 speechSynthesis.speak(utterance);
             } catch (error) {
