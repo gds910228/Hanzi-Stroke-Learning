@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>趣味写字课 - AI 笔画老师</title>
+    <!-- 引入 Hanzi Writer 用于笔画动画 -->
+    <script src="https://gcore.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+    <!-- 引入 pinyin-pro 用于获取拼音 -->
+    <script src="https://gcore.jsdelivr.net/npm/pinyin-pro@3.20.1/dist/index.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #FFF9E6; /* 柔和的米黄底色 */
+            --primary-color: #FF6B6B; /* 明亮的红色 */
+            --secondary-color: #4ECDC4; /* 活泼的青色 */
+            --text-color: #333;
+            --grid-border: #FF9F43;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", "Heiti SC", sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 0px #ffe66d;
+            margin-bottom: 10px;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 25px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        /* 输入区域 */
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        input {
+            padding: 10px 20px;
+            font-size: 1.5rem;
+            border: 3px solid var(--secondary-color);
+            border-radius: 15px;
+            width: 100px;
+            text-align: center;
+            outline: none;
+            color: var(--text-color);
+        }
+
+        input:focus {
+            border-color: var(--primary-color);
+        }
+
+        button {
+            padding: 10px 25px;
+            font-size: 1.2rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.1s;
+            box-shadow: 0 4px 0 #d44646;
+        }
+
+        button:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        /* 拼音显示 */
+        .pinyin-display {
+            font-size: 2.5rem;
+            color: var(--secondary-color);
+            font-weight: bold;
+            height: 60px; /* 占位防止跳动 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+
+        /* 笔画信息 */
+        .stroke-info {
+            color: #888;
+            font-size: 1rem;
+            margin-bottom: 15px;
+        }
+
+        .stroke-count {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        /* 田字格容器 */
+        .tian-zi-ge {
+            width: min(80vw, 300px);
+            height: min(80vw, 300px);
+            margin: 0 auto;
+            position: relative;
+            background-color: #fff;
+            border: 4px solid var(--grid-border);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
+            /* 使用 CSS 绘制田字格内部虚线 */
+            background-image:
+                linear-gradient(to right, transparent 49.5%, var(--grid-border) 49.5%, var(--grid-border) 50.5%, transparent 50.5%),
+                linear-gradient(to bottom, transparent 49.5%, var(--grid-border) 49.5%, var(--grid-border) 50.5%, transparent 50.5%);
+        }
+
+        /* 移动端优化 */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 2rem;
+                margin-bottom: 5px;
+            }
+            .container { padding: 20px; }
+            .pinyin-display { font-size: 2rem; height: 50px; }
+            input {
+                font-size: 1.8rem;
+                width: 80px;
+                min-height: 44px;
+            }
+            button {
+                min-height: 44px;
+                padding: 10px 20px;
+                font-size: 1.1rem;
+            }
+        }
+
+        /* 虚线样式优化 */
+        .tian-zi-ge::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                linear-gradient(45deg, transparent 49%, #ffe0b2 49%, #ffe0b2 51%, transparent 51%),
+                linear-gradient(-45deg, transparent 49%, #ffe0b2 49%, #ffe0b2 51%, transparent 51%);
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        #character-target {
+            position: relative;
+            z-index: 10;
+        }
+
+        /* 控制按钮区域 */
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .btn-secondary {
+            background-color: var(--secondary-color);
+            box-shadow: 0 4px 0 #2a9d8f;
+        }
+
+        .message {
+            margin-top: 15px;
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>✏️ 汉字魔法课堂</h1>
+
+    <div class="container">
+        <div class="input-group">
+            <input type="text" id="charInput" maxlength="1" placeholder="输" value="爱">
+            <button onclick="loadCharacter()">开始学习</button>
+        </div>
+
+        <div class="pinyin-display" id="pinyin">ài</div>
+
+        <div class="stroke-info">
+            笔画数：<span class="stroke-count" id="strokeCount">-</span>
+        </div>
+
+        <div class="tian-zi-ge">
+            <div id="character-target"></div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-secondary" onclick="animateStroke()">✍️ 再写一遍</button>
+            <button class="btn-secondary" onclick="speak()">🔊 读给我听</button>
+        </div>
+        
+        <div class="message" id="statusMsg">输入一个汉字，让 AI 老师教你写！</div>
+    </div>
+
+    <script>
+        let writer = null;
+        const { pinyin } = pinyinPro;
+
+        // 初始化加载
+        window.onload = () => {
+            loadCharacter();
+        };
+
+        // 核心函数：加载汉字
+        function loadCharacter() {
+            const char = document.getElementById('charInput').value;
+            const targetDiv = document.getElementById('character-target');
+            const pinyinDiv = document.getElementById('pinyin');
+            const statusMsg = document.getElementById('statusMsg');
+
+            // 简单验证
+            if (!char || !/[\u4e00-\u9fa5]/.test(char)) {
+                statusMsg.innerText = "请先输入一个中文汉字哦！";
+                statusMsg.style.color = "red";
+                return;
+            }
+            statusMsg.innerText = "加载中...";
+            statusMsg.style.color = "#888";
+
+            // 1. 清空旧的
+            targetDiv.innerHTML = '';
+
+            // 2. 获取拼音
+            const pinyinText = pinyin(char, { toneType: 'symbol' }); // 带声调的拼音
+            pinyinDiv.innerText = pinyinText;
+
+            // 3. 初始化 Hanzi Writer
+            // 这里使用了 CDN 加载笔画数据，需要联网
+            writer = HanziWriter.create('character-target', char, {
+                width: 300,
+                height: 300,
+                padding: 20,
+                strokeColor: '#333', // 笔画颜色
+                highlightColor: '#4ECDC4', // 当前笔颜色（增强教学效果）
+                radicalColor: '#FF6B6B', // 部首颜色（高亮显示，适合教学）
+                showOutline: true, // 显示轮廓底纹
+                outlineColor: '#DDD',
+                strokeAnimationSpeed: 0.5, // 动画速度慢一点，适合孩子
+                delayBetweenStrokes: 800, // 每一笔停顿时间（增加到800ms）
+            });
+
+            // 获取并显示笔画数
+            writer.getCharacterData().then(data => {
+                if (data && data.strokes) {
+                    document.getElementById('strokeCount').innerText =
+                        `${data.strokes.length} 笔`;
+                }
+            });
+
+            // 监听加载完成
+            writer.quiz({
+                onComplete: function(summaryData) {
+                    statusMsg.innerText = "太棒了！你学会了！";
+                }
+            });
+
+            // 自动开始演示一遍
+            animateStroke();
+            
+            // 自动朗读
+            speak();
+        }
+
+        // 动画写字
+        function animateStroke() {
+            if(writer) {
+                writer.animateCharacter();
+            }
+        }
+
+        // 语音朗读 (浏览器原生 API)
+        function speak() {
+            const char = document.getElementById('charInput').value;
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(char);
+                utterance.lang = 'zh-CN';
+                utterance.rate = 0.8; // 语速稍微慢一点，适合儿童
+                window.speechSynthesis.speak(utterance);
+            } else {
+                console.log("浏览器不支持语音播放");
+            }
+        }
+
+        // 监听回车键
+        document.getElementById('charInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                loadCharacter();
+            }
+        });
+    </script>
+</body>
+</html>
