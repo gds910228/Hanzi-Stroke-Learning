@@ -183,9 +183,145 @@
             font-size: 0.9rem;
         }
 
+        /* 常用汉字面板 */
+        .char-panel {
+            margin-top: 25px;
+            border-top: 2px dashed #eee;
+            padding-top: 20px;
+        }
+
+        .panel-title {
+            font-size: 1.2rem;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .category-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .category-tab {
+            padding: 6px 12px;
+            font-size: 0.9rem;
+            background-color: #f0f0f0;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .category-tab.active {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+
+        .char-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
+            gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 5px;
+        }
+
+        .char-btn {
+            aspect-ratio: 1;
+            font-size: 1.5rem;
+            background-color: #ffffff;
+            border: 2px solid #bdbdbd;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .char-btn:hover {
+            background-color: var(--secondary-color);
+            color: white;
+            border-color: var(--secondary-color);
+            transform: scale(1.1);
+        }
+
+        .char-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 移动端优化 */
+        @media (max-width: 600px) {
+            .char-grid {
+                grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+                gap: 6px;
+            }
+            .char-btn {
+                font-size: 1.3rem;
+            }
+        }
+
+        /* 庆祝动画 */
+        @keyframes celebration {
+            0% {
+                transform: scale(0) rotate(0deg);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.2) rotate(180deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        @keyframes starBurst {
+            0% {
+                transform: scale(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(2) rotate(180deg);
+                opacity: 0;
+            }
+        }
+
+        .celebration-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .celebration-emoji {
+            position: absolute;
+            font-size: 3rem;
+            animation: celebration 1s ease-out forwards;
+        }
+
+        .star {
+            position: absolute;
+            color: #FFD700;
+            font-size: 2rem;
+            animation: starBurst 1.5s ease-out forwards;
+        }
+
     </style>
 </head>
 <body>
+
+    <!-- 庆祝动画覆盖层 -->
+    <div class="celebration-overlay" id="celebrationOverlay"></div>
 
     <h1>✏️ 汉字魔法课堂</h1>
 
@@ -211,15 +347,49 @@
         </div>
         
         <div class="message" id="statusMsg">输入一个汉字，让 AI 老师教你写！</div>
+
+        <!-- 常用汉字选择面板 -->
+        <div class="char-panel">
+            <div class="panel-title">📚 常用汉字</div>
+            <div class="category-tabs">
+                <button class="category-tab active" data-category="grade1">一年级</button>
+                <button class="category-tab" data-category="grade2">二年级</button>
+                <button class="category-tab" data-category="grade3">三年级</button>
+                <button class="category-tab" data-category="numbers">数字</button>
+                <button class="category-tab" data-category="animals">动物</button>
+                <button class="category-tab" data-category="plants">植物</button>
+                <button class="category-tab" data-category="nature">自然</button>
+                <button class="category-tab" data-category="family">家人</button>
+                <button class="category-tab" data-category="colors">颜色</button>
+            </div>
+            <div class="char-grid" id="charGrid">
+                <!-- 汉字按钮将通过JavaScript动态生成 -->
+            </div>
+        </div>
     </div>
 
     <script>
         let writer = null;
         const { pinyin } = pinyinPro;
 
+        // 常用汉字数据
+        const commonChars = {
+            grade1: ['一', '二', '三', '十', '人', '大', '小', '山', '水', '火', '土', '木', '天', '地', '日', '月', '白', '云', '风', '雨', '上', '下', '中', '左', '右', '东', '西', '南', '北', '口', '耳', '目', '手', '足', '心', '马', '牛', '羊', '鱼', '鸟', '虫', '了', '子', '女', '好', '学', '生', '老', '师', '书', '本', '写', '字', '读', '画', '花', '树', '叶', '红', '绿', '黄', '蓝', '家', '爸', '妈', '我', '你', '他', '们', '在', '去', '来', '出', '入', '开', '关', '前', '后', '长', '短', '方', '圆', '多', '少', '有', '没', '是', '的', '吗'],
+            grade2: ['车', '飞', '来', '去', '学', '校', '老', '师', '语', '文', '数', '明', '语', '文', '数', '学', '音', '乐', '体', '育', '美', '术', '科', '学', '书', '包', '铅', '笔', '橡', '皮', '尺', '子', '作', '业', '课', '桌', '椅', '子', '黑', '板', '朋', '友', '同', '友', '玩', '具', '游', '戏', '操', '场', '花', '园', '草', '地', '树', '林', '河', '流', '湖', '泊', '海', '洋', '沙', '漠', '山', '峰', '谷', '底', '田', '野', '城', '市', '农', '村', '国', '家', '世', '界', '宇', '宙'],
+            grade3: ['春', '夏', '秋', '冬', '季', '节', '节', '气', '寒', '冷', '炎', '热', '温', '暖', '凉', '爽', '晴', '朗', '阴', '沉', '下', '雨', '下', '雪', '冰', '雹', '霜', '冻', '雾', '霾', '露', '珠', '风', '暴', '台', '风', '龙', '卷', '冰', '雪', '积', '雪', '融', '化', '蒸', '发', '冷', '凝', '降', '水', '河', '流', '江', '河', '湖', '泊', '水', '库', '海', '洋', '海', '岛', '海', '滩', '潮', '汐', '波', '浪', '浪', '花', '海', '啸', '洪', '水', '干', '旱', '灾', '害'],
+            numbers: ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '百', '千', '万', '零', '两', '双', '半', '满', '空', '全', '第', '初', '正', '负', '加', '减', '乘', '除', '等', '于', '大', '小', '多', '少', '高', '低', '长', '短', '宽', '窄', '厚', '薄', '重', '轻', '粗', '细', '方', '圆', '直', '弯', '尖', '秃', '扁', '鼓', '凹', '凸'],
+            animals: ['马', '牛', '羊', '猪', '狗', '猫', '兔', '鸟', '鱼', '虫', '鸡', '鸭', '鹅', '虎', '狮', '象', '熊', '猴', '鼠', '蛇', '龟', '虾', '蟹', '鹿', '狼', '狐', '狸', '豹', '犀', '河', '马', '鳄', '鱼', '鲸', '豚', '蝙', '蝠', '蝴', '蝶', '蜜', '蜂', '蜻', '蜓', '蚂', '蚁', '蜘', '蛛', '蜈', '蚣', '蚯', '蚓', '蝌', '蚪', '青', '蛙', '乌', '龟', '田', '鸡', '蟋', '蟀', '蝗', '虫', '瓢', '虫', '知', '了', '蝴', '蝶', '孔', '雀', '鹦', '鹉', '鸵', '鸟', '企', '鹅', '猫', '头', '鹰', '丹', '顶', '鹤', '松', '鼠', '刺', '猬'],
+            plants: ['花', '草', '树', '木', '叶', '果', '根', '茎', '枝', '条', '树', '干', '树', '皮', '树', '叶', '树', '枝', '树', '根', '树', '苗', '树', '林', '森', '林', '竹', '林', '果', '园', '花', '园', '菜', '园', '草', '地', '草', '坪', '草', '原', '草', '莓', '莲', '花', '荷', '花', '菊', '花', '梅', '花', '桂', '花', '兰', '花', '牡', '丹', '玫', '瑰', '月', '季', '葵', '花', '牵', '牛', '花', '向', '日', '葵', '桃', '花', '杏', '花', '梨', '花', '苹', '果', '桃', '子', '杏', '子', '梨', '子', '橘', '子', '柚', '子', '柿', '子', '枣', '子', '栗', '子', '核', '桃', '花', '生', '葵', '花', '籽'],
+            nature: ['山', '水', '火', '土', '石', '田', '天', '地', '日', '月', '星', '云', '风', '雨', '雪', '冰', '雷', '电', '天', '地', '春', '夏', '秋', '冬', '花', '草', '树', '木', '叶', '果', '江', '河', '湖', '海', '池', '泉', '沙', '尘', '泥', '土', '雨', '露', '霜', '雾', '烟', '霞', '露', '珠', '云', '彩', '彩', '虹', '日', '月', '星', '辰', '天', '空', '天', '气', '气', '象', '地', '震', '火', '山', '飓', '风', '龙', '卷', '风', '冰', '雹', '雪', '崩', '泥', '石', '流', '洪', '水', '干', '旱', '沙', '尘', '暴', '雾', '霾', '酸', '雨', '温', '室', '效', '应'],
+            family: ['爸', '妈', '父', '母', '爷', '奶', '爷', '公', '婆', '姥', '叔', '伯', '姑', '姨', '舅', '哥', '姐', '弟', '妹', '我', '你', '他', '们', '家', '人', '儿', '女', '孩', '子', '亲', '爱', '的', '家', '祖', '父', '祖', '母', '外', '祖', '父', '外', '祖', '母', '曾', '祖', '父', '曾', '祖', '母', '表', '哥', '表', '姐', '堂', '哥', '堂', '姐', '侄', '子', '侄', '女', '外', '甥', '外', '甥', '女', '孙', '子', '孙', '女', '丈', '夫', '妻', '子', '老', '公', '老', '婆', '男', '朋', '友', '女', '朋', '友', '恋', '人', '爱', '人', '家', '庭', '家', '族', '亲', '人', '亲', '戚', '血', '缘', '关', '系'],
+            colors: ['红', '绿', '黄', '蓝', '黑', '白', '灰', '紫', '粉', '橙', '棕', '青', '蓝', '绿', '黄', '金', '银', '彩', '色', '深', '浅', '亮', '暗', '鲜', '艳', '淡', '雅', '素', '净', '花', '哨', '斑', '斓', '绚', '丽', '璀', '璨', '夺', '目', '耀', '眼', '柔', '和', '温', '暖', '冷', '酷', '火', '热', '冰', '冷', '火', '红', '桃', '红', '粉', '红', '朱', '红', '血', '红', '橙', '红', '枣', '红', '大', '红', '金', '黄', '橙', '黄', '鹅', '黄', '米', '黄', '土', '黄', '嫩', '黄', '翠', '绿', '墨', '绿', '草', '绿', '淡', '绿', '青', '绿', '碧', '绿', '玉', '绿', '嫩', '绿', '深', '蓝', '浅', '蓝', '天', '蓝', '海', '蓝', '淡', '蓝', '靛', '蓝', '钴', '蓝']
+        };
+
         // 初始化加载
         window.onload = () => {
             loadCharacter();
+            renderCharGrid('grade1'); // 默认显示一年级汉字
+            setupCategoryTabs();
         };
 
         // 核心函数：加载汉字
@@ -233,6 +403,7 @@
             if (!char || !/[\u4e00-\u9fa5]/.test(char)) {
                 statusMsg.innerText = "请先输入一个中文汉字哦！";
                 statusMsg.style.color = "red";
+                playSound('error');
                 return;
             }
             statusMsg.innerText = "加载中...";
@@ -272,6 +443,8 @@
             writer.quiz({
                 onComplete: function(summaryData) {
                     statusMsg.innerText = "太棒了！你学会了！";
+                    playSound('complete');
+                    showCelebration();
                 }
             });
 
@@ -286,6 +459,18 @@
         function animateStroke() {
             if(writer) {
                 writer.animateCharacter();
+                // 动画结束后重新启用练习模式
+                setTimeout(() => {
+                    if (writer) {
+                        writer.quiz({
+                            onComplete: function(summaryData) {
+                                statusMsg.innerText = "太棒了！你学会了！";
+                                playSound('complete');
+                                showCelebration();
+                            }
+                        });
+                    }
+                }, 3000);
             }
         }
 
@@ -308,6 +493,166 @@
                 loadCharacter();
             }
         });
+
+        // 渲染汉字网格
+        function renderCharGrid(category) {
+            const charGrid = document.getElementById('charGrid');
+            const chars = commonChars[category] || [];
+
+            charGrid.innerHTML = '';
+
+            chars.forEach(char => {
+                const btn = document.createElement('button');
+                btn.className = 'char-btn';
+                btn.textContent = char;
+                btn.onclick = () => {
+                    document.getElementById('charInput').value = char;
+                    loadCharacter();
+                };
+                charGrid.appendChild(btn);
+            });
+        }
+
+        // 设置分类标签点击事件
+        function setupCategoryTabs() {
+            const tabs = document.querySelectorAll('.category-tab');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // 移除所有active类
+                    tabs.forEach(t => t.classList.remove('active'));
+                    // 添加active类到当前标签
+                    tab.classList.add('active');
+
+                    const category = tab.dataset.category;
+                    renderCharGrid(category);
+                    playSound('click');
+                });
+            });
+        }
+
+        // Web Audio API 音效系统
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                switch(type) {
+                    case 'click':
+                        oscillator.frequency.value = 800;
+                        gainNode.gain.value = 0.1;
+                        oscillator.start();
+                        oscillator.stop(audioContext.currentTime + 0.05);
+                        break;
+                    case 'success':
+                        oscillator.frequency.value = 1000;
+                        gainNode.gain.value = 0.2;
+                        oscillator.start();
+                        oscillator.stop(audioContext.currentTime + 0.1);
+                        setTimeout(() => {
+                            const osc2 = audioContext.createOscillator();
+                            const gain2 = audioContext.createGain();
+                            osc2.connect(gain2);
+                            gain2.connect(audioContext.destination);
+                            osc2.frequency.value = 1200;
+                            gain2.gain.value = 0.2;
+                            osc2.start();
+                            osc2.stop(audioContext.currentTime + 0.1);
+                        }, 100);
+                        break;
+                    case 'error':
+                        oscillator.frequency.value = 300;
+                        gainNode.gain.value = 0.15;
+                        oscillator.start();
+                        oscillator.stop(audioContext.currentTime + 0.2);
+                        break;
+                    case 'complete':
+                        // 播放成功旋律
+                        const notes = [523.25, 659.25, 783.99]; // C, E, G
+                        notes.forEach((freq, index) => {
+                            setTimeout(() => {
+                                const osc = audioContext.createOscillator();
+                                const gain = audioContext.createGain();
+                                osc.connect(gain);
+                                gain.connect(audioContext.destination);
+                                osc.frequency.value = freq;
+                                gain.gain.value = 0.2;
+                                osc.start();
+                                osc.stop(audioContext.currentTime + 0.15);
+                            }, index * 150);
+                        });
+                        break;
+                }
+            } catch (e) {
+                console.log('音效播放失败:', e);
+            }
+        }
+
+        // 为关键交互添加音效
+        document.addEventListener('DOMContentLoaded', () => {
+            // 为所有按钮添加点击音效
+            document.querySelectorAll('button').forEach(btn => {
+                if (!btn.classList.contains('char-btn') && !btn.classList.contains('category-tab')) {
+                    btn.addEventListener('click', () => playSound('click'));
+                }
+            });
+
+            // 为汉字按钮添加音效
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('char-btn')) {
+                    playSound('click');
+                }
+            });
+        });
+
+        // 庆祝动画
+        function showCelebration() {
+            const overlay = document.getElementById('celebrationOverlay');
+            const emojis = ['🎉', '⭐', '✨', '🎊', '🏆', '💯', '👏'];
+
+            // 清空调以前的动画
+            overlay.innerHTML = '';
+
+            // 创建庆祝表情
+            for (let i = 0; i < 8; i++) {
+                setTimeout(() => {
+                    const emoji = document.createElement('div');
+                    emoji.className = 'celebration-emoji';
+                    emoji.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                    emoji.style.left = Math.random() * (window.innerWidth - 100) + 'px';
+                    emoji.style.top = Math.random() * (window.innerHeight - 100) + 'px';
+                    overlay.appendChild(emoji);
+
+                    // 2秒后移除
+                    setTimeout(() => {
+                        emoji.remove();
+                    }, 2000);
+                }, i * 100);
+            }
+
+            // 创建星星爆炸效果
+            setTimeout(() => {
+                for (let i = 0; i < 6; i++) {
+                    const star = document.createElement('div');
+                    star.className = 'star';
+                    star.textContent = '★';
+                    const angle = (i * 60) * Math.PI / 180;
+                    const distance = 150;
+                    star.style.left = (window.innerWidth / 2 + Math.cos(angle) * distance) + 'px';
+                    star.style.top = (window.innerHeight / 2 + Math.sin(angle) * distance) + 'px';
+                    overlay.appendChild(star);
+
+                    setTimeout(() => {
+                        star.remove();
+                    }, 1500);
+                }
+            }, 500);
+        }
     </script>
 </body>
 </html>

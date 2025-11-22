@@ -6,7 +6,8 @@
       "Bash(python -m http.server 8000:*)",
       "Bash(tasklist:*)",
       "Bash(findstr:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
